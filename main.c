@@ -90,9 +90,53 @@ void draw_string (int x, int y, char *string)
     SMS_loadTileMapArea (x, y, name_table, count, 1);
 }
 
+void clear_screen (void)
+{
+    uint16_t name_table[32] = { 0 };
+    for (int i = 0; i < 28; i++)
+    {
+        SMS_loadTileMapArea (0, i, name_table, 32, 1);
+    }
+
+    draw_string (1, 0,  "SNEP TEST SMS");
+    draw_string (0, 1, "---------------");
+}
+
+void draw_title_screen (bool first_draw)
+{
+    if (first_draw)
+    {
+        clear_screen ();
+        draw_string (28, 0, "0/1");
+        draw_string (3, 3,  "TEST ROM FOR SMS EMULATORS");
+        draw_string (5, 5,  "1. FONT");
+    }
+}
+
+
+void draw_font_test (bool first_draw)
+{
+    if (first_draw)
+    {
+        clear_screen ();
+        draw_string (28, 0, "1/1");
+        draw_string (1, 3,  "FONT:");
+        draw_string (4, 6,  "A B C D E F G H I J K L");
+        draw_string (4, 8,  "M N O P Q R S T U V W X");
+        draw_string (4, 10,  "Y Z");
+
+        draw_string (4, 13, "0 1 2 3 4 5 6 7 8 9");
+
+        draw_string (4, 16, "! \" # $ % & ' ( ) * + ,");
+        draw_string (4, 18, "- . / : ; < = > ? @");
+    }
+}
+
 void main (void)
 {
     uint16_t frame = 0;
+    uint16_t page = 0;
+    bool first_draw = true;
 
     SMS_setBackdropColor (0);
     SMS_setBGPaletteColor (0, 0x01); /* Dark red at index 0 (background) */
@@ -101,23 +145,25 @@ void main (void)
 
     SMS_loadTiles (patterns, 0, sizeof (patterns));
 
-    draw_string (1, 0,  "SNEP TEST SMS"); draw_string (28, 0, "0/1");
-    draw_string (0, 1, "---------------");
-
-    draw_string (1, 3,  "FONT:");
-    draw_string (4, 6,  "A B C D E F G H I J K L");
-    draw_string (4, 8,  "M N O P Q R S T U V W X");
-    draw_string (4, 10,  "Y Z");
-
-    draw_string (4, 13, "0 1 2 3 4 5 6 7 8 9");
-
-    draw_string (4, 16, "! \" # $ % & ' ( ) * + ,");
-    draw_string (4, 18, "- . / : ; < = > ? @");
-
     SMS_displayOn ();
 
     while (true)
     {
-        frame++;
+        SMS_waitForVBlank ();
+
+        if (frame++ > 300)
+        {
+            frame = 0;
+            page = (page + 1) % 2;
+            first_draw = true;
+        }
+
+        switch (page)
+        {
+            case 0: draw_title_screen  (first_draw); break;
+            case 1: draw_font_test     (first_draw); break;
+            default: draw_title_screen (first_draw);
+        }
+        first_draw = false;
     }
 }
