@@ -180,6 +180,59 @@ void scroll_test (void)
         else if (pressed & PORT_A_KEY_RIGHT) scroll_x++;
         else if (pressed & PORT_A_KEY_1)     break;
     }
+
+    SMS_setBGScrollX (0);
+    SMS_setBGScrollY (0);
+}
+
+void input_test (void)
+{
+    char string_buf[3] = { '\0' };
+    unsigned int scroll_x = 0;
+    unsigned int scroll_y = 0;
+
+    clear_screen ();
+    draw_string (10, 23, "1 + 2: BACK");
+
+    draw_string (4,  4,  "PLAYER 1");
+    draw_string (4,  7,  "UP");
+    draw_string (4,  9,  "DOWN");
+    draw_string (4, 11,  "LEFT");
+    draw_string (4, 13,  "RIGHT");
+    draw_string (4, 15,  "BUTTON 1");
+    draw_string (4, 17,  "BUTTON 2");
+
+    draw_string (20,  4,  "PLAYER 2");
+    draw_string (20,  7,  "UP");
+    draw_string (20,  9,  "DOWN");
+    draw_string (20, 11,  "LEFT");
+    draw_string (20, 13,  "RIGHT");
+    draw_string (20, 15,  "BUTTON 1");
+    draw_string (20, 17,  "BUTTON 2");
+
+    while (true)
+    {
+        unsigned int pressed;
+
+        SMS_waitForVBlank ();
+        pressed = SMS_getKeysStatus ();
+
+        if (pressed & PORT_A_KEY_UP)    draw_string (1,   7,  "->"); else draw_string (1,   7,  "  ");
+        if (pressed & PORT_A_KEY_DOWN)  draw_string (1,   9,  "->"); else draw_string (1,   9,  "  ");
+        if (pressed & PORT_A_KEY_LEFT)  draw_string (1,  11,  "->"); else draw_string (1,  11,  "  ");
+        if (pressed & PORT_A_KEY_RIGHT) draw_string (1,  13,  "->"); else draw_string (1,  13,  "  ");
+        if (pressed & PORT_A_KEY_1)     draw_string (1,  15,  "->"); else draw_string (1,  15,  "  ");
+        if (pressed & PORT_A_KEY_2)     draw_string (1,  17,  "->"); else draw_string (1,  17,  "  ");
+
+        if (pressed & PORT_B_KEY_UP)    draw_string (17,  7,  "->"); else draw_string (17,  7,  "  ");
+        if (pressed & PORT_B_KEY_DOWN)  draw_string (17,  9,  "->"); else draw_string (17,  9,  "  ");
+        if (pressed & PORT_B_KEY_LEFT)  draw_string (17, 11,  "->"); else draw_string (17, 11,  "  ");
+        if (pressed & PORT_B_KEY_RIGHT) draw_string (17, 13,  "->"); else draw_string (17, 13,  "  ");
+        if (pressed & PORT_B_KEY_1)     draw_string (17, 15,  "->"); else draw_string (17, 15,  "  ");
+        if (pressed & PORT_B_KEY_2)     draw_string (17, 17,  "->"); else draw_string (17, 17,  "  ");
+
+        if ((pressed & PORT_A_KEY_1) && (pressed & PORT_A_KEY_2)) break;
+    }
 }
 
 void main (void)
@@ -204,7 +257,7 @@ menu_start:
     draw_string ( 3,  3,  "TEST ROM FOR SMS EMULATORS");
     draw_string ( 8,  7,  "FONT");
     draw_string ( 8,  9,  "SCROLLING");
-    draw_string ( 8, 11,  "STICKY PLUSHIES");
+    draw_string ( 8,  11, "INPUT");
 
 
     while (true)
@@ -236,6 +289,10 @@ menu_start:
 
                 case 1:
                     scroll_test ();
+                    goto menu_start;
+
+                case 2:
+                    input_test ();
                     goto menu_start;
 
                 default: break;
