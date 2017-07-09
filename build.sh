@@ -8,7 +8,7 @@ echo "Compiling..."
 ${SDCC} -c -mz80 --peep-file ${DKSMS}/SMSlib/src/peep-rules.txt main.c
 
 echo "Linking..."
-${SDCC} -o main.ihx -mz80 --no-std-crt0 --data-loc 0xC000 ${DKSMS}/crt0/crt0_sms.rel main.rel SMSlib.lib
+${SDCC} -o sneptest.ihx -mz80 --no-std-crt0 --data-loc 0xC000 ${DKSMS}/crt0/crt0_sms.rel main.rel SMSlib.lib
 
 echo "Generating SMS ROM..."
-${IHX2SMS} main.ihx sms_test.sms
+${IHX2SMS} sneptest.ihx sneptest.sms

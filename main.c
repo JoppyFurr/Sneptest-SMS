@@ -98,44 +98,38 @@ void clear_screen (void)
         SMS_loadTileMapArea (0, i, name_table, 32, 1);
     }
 
-    draw_string (1, 0,  "SNEP TEST SMS");
-    draw_string (0, 1, "---------------");
+    draw_string (1,  0,  "SNEP TEST SMS");
+    draw_string (0,  1, "---------------");
+    draw_string (7, 23, "1: BACK, 2: SELECT");
 }
 
-void draw_title_screen (bool first_draw)
+void font_test (void)
 {
-    if (first_draw)
+    clear_screen ();
+    draw_string (1, 3,  "FONT:");
+    draw_string (4, 6,  "A B C D E F G H I J K L");
+    draw_string (4, 8,  "M N O P Q R S T U V W X");
+    draw_string (4, 10,  "Y Z");
+
+    draw_string (4, 13, "0 1 2 3 4 5 6 7 8 9");
+
+    draw_string (4, 16, "! \" # $ % & ' ( ) * + ,");
+    draw_string (4, 18, "- . / : ; < = > ? @");
+
+    while (true)
     {
-        clear_screen ();
-        draw_string (28, 0, "0/1");
-        draw_string (3, 3,  "TEST ROM FOR SMS EMULATORS");
-        draw_string (5, 5,  "1. FONT");
-    }
-}
+        unsigned int pressed;
+        SMS_waitForVBlank ();
 
-
-void draw_font_test (bool first_draw)
-{
-    if (first_draw)
-    {
-        clear_screen ();
-        draw_string (28, 0, "1/1");
-        draw_string (1, 3,  "FONT:");
-        draw_string (4, 6,  "A B C D E F G H I J K L");
-        draw_string (4, 8,  "M N O P Q R S T U V W X");
-        draw_string (4, 10,  "Y Z");
-
-        draw_string (4, 13, "0 1 2 3 4 5 6 7 8 9");
-
-        draw_string (4, 16, "! \" # $ % & ' ( ) * + ,");
-        draw_string (4, 18, "- . / : ; < = > ? @");
+        pressed = SMS_getKeysPressed ();
+        if (pressed & PORT_A_KEY_1)
+            break;
     }
 }
 
 void main (void)
 {
-    uint16_t frame = 0;
-    uint16_t page = 0;
+    uint16_t cursor = 0;
     bool first_draw = true;
 
     SMS_setBackdropColor (0);
@@ -147,23 +141,48 @@ void main (void)
 
     SMS_displayOn ();
 
+menu_start:
+
+    clear_screen ();
+    draw_string ( 3,  3,  "TEST ROM FOR SMS EMULATORS");
+    draw_string ( 8,  7,  "FONT");
+    draw_string ( 8,  9,  "YIFF");
+    draw_string ( 8, 11,  "POOLTOYS");
+
+
     while (true)
     {
+        unsigned int pressed;
         SMS_waitForVBlank ();
 
-        if (frame++ > 300)
+        /* Clear cursor */
+        draw_string (5, 7 + (cursor << 1), "  ");
+
+        pressed = SMS_getKeysPressed ();
+        if (pressed & PORT_A_KEY_UP)
         {
-            frame = 0;
-            page = (page + 1) % 2;
-            first_draw = true;
+            if (--cursor > 3)
+                cursor = 0;
+        }
+        else if (pressed & PORT_A_KEY_DOWN)
+        {
+            if (++cursor > 2)
+                cursor = 2;
+        }
+        else if (pressed & PORT_A_KEY_2)
+        {
+            switch (cursor)
+            {
+                case 0:
+                    font_test ();
+                    goto menu_start;
+
+                default: break;
+            }
         }
 
-        switch (page)
-        {
-            case 0: draw_title_screen  (first_draw); break;
-            case 1: draw_font_test     (first_draw); break;
-            default: draw_title_screen (first_draw);
-        }
-        first_draw = false;
+        /* Draw cursor */
+        draw_string (5, 7 + (cursor << 1), "->");
+
     }
 }
