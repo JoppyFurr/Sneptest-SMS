@@ -174,11 +174,11 @@ void scroll_test (void)
         if (pressed & PORT_A_KEY_2)
             pressed = SMS_getKeysPressed ();
 
-        if      (pressed & PORT_A_KEY_UP)    scroll_y++;
-        else if (pressed & PORT_A_KEY_DOWN)  scroll_y--;
-        else if (pressed & PORT_A_KEY_LEFT)  scroll_x--;
-        else if (pressed & PORT_A_KEY_RIGHT) scroll_x++;
-        else if (pressed & PORT_A_KEY_1)     break;
+        if (pressed & PORT_A_KEY_UP)    scroll_y++;
+        if (pressed & PORT_A_KEY_DOWN)  scroll_y--;
+        if (pressed & PORT_A_KEY_LEFT)  scroll_x--;
+        if (pressed & PORT_A_KEY_RIGHT) scroll_x++;
+        if (pressed & PORT_A_KEY_1)     break;
     }
 
     SMS_setBGScrollX (0);
@@ -190,25 +190,26 @@ void input_test (void)
     char string_buf[3] = { '\0' };
     unsigned int scroll_x = 0;
     unsigned int scroll_y = 0;
+    uint8_t line;
 
     clear_screen ();
     draw_string (10, 23, "1 + 2: BACK");
 
-    draw_string (4,  4,  "PLAYER 1");
-    draw_string (4,  7,  "UP");
-    draw_string (4,  9,  "DOWN");
-    draw_string (4, 11,  "LEFT");
-    draw_string (4, 13,  "RIGHT");
-    draw_string (4, 15,  "BUTTON 1");
-    draw_string (4, 17,  "BUTTON 2");
+    draw_string (4, line  = 4,  "PLAYER 1");
+    draw_string (4, line += 3,  "UP");
+    draw_string (4, line += 2,  "DOWN");
+    draw_string (4, line += 2,  "LEFT");
+    draw_string (4, line += 2,  "RIGHT");
+    draw_string (4, line += 2,  "BUTTON 1");
+    draw_string (4, line += 2,  "BUTTON 2");
 
-    draw_string (20,  4,  "PLAYER 2");
-    draw_string (20,  7,  "UP");
-    draw_string (20,  9,  "DOWN");
-    draw_string (20, 11,  "LEFT");
-    draw_string (20, 13,  "RIGHT");
-    draw_string (20, 15,  "BUTTON 1");
-    draw_string (20, 17,  "BUTTON 2");
+    draw_string (20, line  = 4,  "PLAYER 2");
+    draw_string (20, line += 3,  "UP");
+    draw_string (20, line += 2,  "DOWN");
+    draw_string (20, line += 2,  "LEFT");
+    draw_string (20, line += 2,  "RIGHT");
+    draw_string (20, line += 2,  "BUTTON 1");
+    draw_string (20, line += 2,  "BUTTON 2");
 
     while (true)
     {
@@ -239,6 +240,7 @@ void main (void)
 {
     uint16_t cursor = 0;
     bool first_draw = true;
+    uint8_t line;
 
     SMS_setBackdropColor (0);
     SMS_setBGPaletteColor (0, 0x01); /* Dark red at index 0 (background) */
@@ -251,13 +253,19 @@ void main (void)
 
 menu_start:
 
+    line = 0;
+
     clear_screen ();
     draw_string (7, 23, "1: BACK, 2: SELECT");
 
-    draw_string ( 3,  3,  "TEST ROM FOR SMS EMULATORS");
-    draw_string ( 8,  7,  "FONT");
-    draw_string ( 8,  9,  "SCROLLING");
-    draw_string ( 8,  11, "INPUT");
+    draw_string ( 3,  line += 3,  "TEST ROM FOR SMS EMULATORS");
+    draw_string ( 8,  line += 4,  "INPUT");
+    draw_string ( 8,  line += 2,  "SCROLLING");
+    draw_string ( 8,  line += 2,  "FONT");
+    /* TODO: Pause button */
+    /* TODO: VDP interrupts */
+    /* TODO: Instructions/flags */
+    /* TODO: Sprites */
 
 
     while (true)
@@ -284,7 +292,7 @@ menu_start:
             switch (cursor)
             {
                 case 0:
-                    font_test ();
+                    input_test ();
                     goto menu_start;
 
                 case 1:
@@ -292,7 +300,7 @@ menu_start:
                     goto menu_start;
 
                 case 2:
-                    input_test ();
+                    font_test ();
                     goto menu_start;
 
                 default: break;
