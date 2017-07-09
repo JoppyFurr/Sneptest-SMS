@@ -100,12 +100,13 @@ void clear_screen (void)
 
     draw_string (1,  0,  "SNEP TEST SMS");
     draw_string (0,  1, "---------------");
-    draw_string (7, 23, "1: BACK, 2: SELECT");
 }
 
 void font_test (void)
 {
     clear_screen ();
+    draw_string (7, 23, "1: BACK, 2: SELECT");
+
     draw_string (1, 3,  "FONT:");
     draw_string (4, 6,  "A B C D E F G H I J K L");
     draw_string (4, 8,  "M N O P Q R S T U V W X");
@@ -127,6 +128,60 @@ void font_test (void)
     }
 }
 
+void uint8_to_string (char *string, uint8_t value)
+{
+    /* Most-significant nibble */
+    if (value < 0xa0)
+        string[0] = '0' + (value >> 4);
+    else
+        string[0] = 'A' + (value >> 4) - 10;
+
+    /* Least-significant nibble */
+    if ((value & 0x0f) < 0x0a)
+        string[1] = '0' + (value & 0x0f);
+    else
+        string[1] = 'A' + (value & 0x0f) - 10;
+}
+
+void scroll_test (void)
+{
+    char string_buf[3] = { '\0' };
+    unsigned int scroll_x = 0;
+    unsigned int scroll_y = 0;
+
+    clear_screen ();
+    draw_string (7, 23, "1: BACK, 2: SLOW");
+
+    draw_string (10, 12,  "SCROLL X:");
+    draw_string (10, 14,  "SCROLL Y:");
+
+    while (true)
+    {
+        unsigned int pressed;
+        SMS_waitForVBlank ();
+
+        SMS_setBGScrollX (scroll_x);
+        SMS_setBGScrollY (scroll_y);
+
+        /* Render during vblank */
+        uint8_to_string (string_buf, scroll_x);
+        draw_string (20, 12, string_buf);
+        uint8_to_string (string_buf, scroll_y);
+        draw_string (20, 14, string_buf);
+
+        /* Input handling */
+        pressed = SMS_getKeysStatus ();
+        if (pressed & PORT_A_KEY_2)
+            pressed = SMS_getKeysPressed ();
+
+        if      (pressed & PORT_A_KEY_UP)    scroll_y++;
+        else if (pressed & PORT_A_KEY_DOWN)  scroll_y--;
+        else if (pressed & PORT_A_KEY_LEFT)  scroll_x--;
+        else if (pressed & PORT_A_KEY_RIGHT) scroll_x++;
+        else if (pressed & PORT_A_KEY_1)     break;
+    }
+}
+
 void main (void)
 {
     uint16_t cursor = 0;
@@ -144,10 +199,12 @@ void main (void)
 menu_start:
 
     clear_screen ();
+    draw_string (7, 23, "1: BACK, 2: SELECT");
+
     draw_string ( 3,  3,  "TEST ROM FOR SMS EMULATORS");
     draw_string ( 8,  7,  "FONT");
-    draw_string ( 8,  9,  "YIFF");
-    draw_string ( 8, 11,  "POOLTOYS");
+    draw_string ( 8,  9,  "SCROLLING");
+    draw_string ( 8, 11,  "STICKY PLUSHIES");
 
 
     while (true)
@@ -175,6 +232,10 @@ menu_start:
             {
                 case 0:
                     font_test ();
+                    goto menu_start;
+
+                case 1:
+                    scroll_test ();
                     goto menu_start;
 
                 default: break;
