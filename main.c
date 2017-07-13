@@ -236,6 +236,65 @@ void input_test (void)
     }
 }
 
+uint8_t line_interrupt_count = 0;
+
+void vdp_interrupt_test_handler (void)
+{
+    line_interrupt_count++;
+}
+
+void vdp_interrupt_test (void)
+{
+    char string_buf[3] = { '\0' };
+    unsigned int counter_reload = 128;
+    unsigned int count_last_frame = 0;
+
+    /* Configure the interurpt */
+    SMS_setLineInterruptHandler (vdp_interrupt_test_handler);
+    SMS_enableLineInterrupt();
+
+    clear_screen ();
+    draw_string (7, 23, "1: BACK, 2: SLOW");
+
+    draw_string (10, 12,  "RELOAD:");
+    draw_string (10, 14,  "SEEN:");
+
+    while (true)
+    {
+        unsigned int pressed;
+        SMS_waitForVBlank ();
+
+        /* Upate and reset counter */
+        count_last_frame = line_interrupt_count;
+        line_interrupt_count = 0;
+
+        /* Render during vblank */
+        uint8_to_string (string_buf, counter_reload);
+        draw_string (20, 12, string_buf);
+        uint8_to_string (string_buf, count_last_frame);
+        draw_string (20, 14, string_buf);
+
+        /* Input handling */
+        pressed = SMS_getKeysStatus ();
+        if (pressed & PORT_A_KEY_2)
+            pressed = SMS_getKeysPressed ();
+
+        if (pressed & PORT_A_KEY_UP)
+        {
+            counter_reload++;
+            SMS_setLineCounter (counter_reload);
+        }
+        if (pressed & PORT_A_KEY_DOWN)
+        {
+            counter_reload--;
+            SMS_setLineCounter (counter_reload);
+        }
+        if (pressed & PORT_A_KEY_1)     break;
+    }
+
+    SMS_disableLineInterrupt();
+}
+
 void main (void)
 {
     uint16_t cursor = 0;
@@ -262,6 +321,7 @@ menu_start:
     draw_string ( 8,  line += 4,  "INPUT");
     draw_string ( 8,  line += 2,  "SCROLLING");
     draw_string ( 8,  line += 2,  "FONT");
+    draw_string ( 8,  line += 2,  "VDP INTERRUPTS");
     /* TODO: Pause button */
     /* TODO: VDP interrupts */
     /* TODO: Instructions/flags */
@@ -284,8 +344,8 @@ menu_start:
         }
         else if (pressed & PORT_A_KEY_DOWN)
         {
-            if (++cursor > 2)
-                cursor = 2;
+            if (++cursor > 3)
+                cursor = 3;
         }
         else if (pressed & PORT_A_KEY_2)
         {
@@ -301,6 +361,10 @@ menu_start:
 
                 case 2:
                     font_test ();
+                    goto menu_start;
+
+                case 3:
+                    vdp_interrupt_test ();
                     goto menu_start;
 
                 default: break;
