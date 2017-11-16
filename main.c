@@ -249,7 +249,7 @@ void vdp_interrupt_test (void)
     unsigned int counter_reload = 128;
     unsigned int count_last_frame = 0;
 
-    /* Configure the interurpt */
+    /* Configure the interrupt */
     SMS_setLineInterruptHandler (vdp_interrupt_test_handler);
     SMS_enableLineInterrupt();
 
@@ -264,7 +264,7 @@ void vdp_interrupt_test (void)
         unsigned int pressed;
         SMS_waitForVBlank ();
 
-        /* Upate and reset counter */
+        /* Update and reset counter */
         count_last_frame = line_interrupt_count;
         line_interrupt_count = 0;
 
@@ -295,6 +295,68 @@ void vdp_interrupt_test (void)
     SMS_disableLineInterrupt();
 }
 
+void vdp_sprite_test (void)
+{
+    char string_buf[3] = { '\0' };
+    unsigned int sprite_x = 128;
+    unsigned int sprite_y = 96;
+    signed char sprite_index = 0;
+
+    clear_screen ();
+    draw_string (7, 23, "1: BACK, 2: SLOW");
+
+    draw_string (10, 12,  "SPRITE X:");
+    draw_string (10, 14,  "SPRITE Y:");
+
+    SMS_useFirstHalfTilesforSprites (true);
+    SMS_setSpritePaletteColor (1, 0x0f); /* Yellow at index 1 (sprite font) */
+
+    SMS_initSprites();
+    sprite_index = SMS_addSprite (sprite_x, sprite_y, '#' - ' ');
+    SMS_finalizeSprites();
+
+    while (true)
+    {
+        unsigned int pressed;
+        SMS_waitForVBlank ();
+
+        /* Render during vblank */
+        uint8_to_string (string_buf, sprite_x);
+        draw_string (22, 12, string_buf);
+        uint8_to_string (string_buf, sprite_y);
+        draw_string (22, 14, string_buf);
+        SMS_updateSpritePosition (sprite_index, sprite_x, sprite_y);
+        SMS_copySpritestoSAT ();
+
+        /* Input handling */
+        pressed = SMS_getKeysStatus ();
+        if (pressed & PORT_A_KEY_2)
+            pressed = SMS_getKeysPressed ();
+
+        if (pressed & PORT_A_KEY_UP)
+        {
+            sprite_y--;
+        }
+        if (pressed & PORT_A_KEY_DOWN)
+        {
+            sprite_y++;
+        }
+        if (pressed & PORT_A_KEY_LEFT)
+        {
+            sprite_x--;
+        }
+        if (pressed & PORT_A_KEY_RIGHT)
+        {
+            sprite_x++;
+        }
+        if (pressed & PORT_A_KEY_1)     break;
+    }
+
+    SMS_initSprites ();
+    SMS_finalizeSprites ();
+    SMS_copySpritestoSAT ();
+}
+
 void main (void)
 {
     uint16_t cursor = 0;
@@ -322,10 +384,9 @@ menu_start:
     draw_string ( 8,  line += 2,  "SCROLLING");
     draw_string ( 8,  line += 2,  "FONT");
     draw_string ( 8,  line += 2,  "VDP INTERRUPTS");
+    draw_string ( 8,  line += 2,  "SPRITES");
     /* TODO: Pause button */
-    /* TODO: VDP interrupts */
     /* TODO: Instructions/flags */
-    /* TODO: Sprites */
 
 
     while (true)
@@ -339,13 +400,13 @@ menu_start:
         pressed = SMS_getKeysPressed ();
         if (pressed & PORT_A_KEY_UP)
         {
-            if (--cursor > 3)
+            if (--cursor > 4)
                 cursor = 0;
         }
         else if (pressed & PORT_A_KEY_DOWN)
         {
-            if (++cursor > 3)
-                cursor = 3;
+            if (++cursor > 4)
+                cursor = 4;
         }
         else if (pressed & PORT_A_KEY_2)
         {
@@ -365,6 +426,10 @@ menu_start:
 
                 case 3:
                     vdp_interrupt_test ();
+                    goto menu_start;
+
+                case 4:
+                    vdp_sprite_test ();
                     goto menu_start;
 
                 default: break;
