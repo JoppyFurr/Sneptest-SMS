@@ -1,14 +1,31 @@
 #!/bin/sh
+echo ""
+echo "Sneptest SMS Build Script"
+echo "-------------------------"
 
-SDCC=/home/joppy/Code/sdcc3.6/bin/sdcc
-IHX2SMS=/home/joppy/Code/sdcc3.6/bin/ihx2sms
-DKSMS=/home/joppy/Code/devkitSMS/
+sdcc="${HOME}/Code/sdcc-4.1.0/bin/sdcc"
+devkitSMS="${HOME}/Code/devkitSMS"
+SMSlib="${devkitSMS}/SMSlib"
+ihx2sms="${devkitSMS}/ihx2sms/Linux/ihx2sms"
 
+rm -r build
+mkdir -p build
+
+echo ""
 echo "Compiling..."
-${SDCC} -c -mz80 --peep-file ${DKSMS}/SMSlib/src/peep-rules.txt main.c
+for file in main
+do
+    echo " -> ${file}.c"
+    ${sdcc} -c -mz80 --peep-file ${devkitSMS}/SMSlib/src/peep-rules.txt -I ${SMSlib}/src \
+        -o "build/${file}.rel" "source/${file}.c" || exit 1
+done
 
 echo "Linking..."
-${SDCC} -o sneptest.ihx -mz80 --no-std-crt0 --data-loc 0xC000 ${DKSMS}/crt0/crt0_sms.rel main.rel SMSlib.lib
+${sdcc} -o build/sneptest.ihx -mz80 --no-std-crt0 --data-loc 0xC000 ${devkitSMS}/crt0/crt0_sms.rel build/*.rel ${SMSlib}/SMSlib.lib || exit 1
 
-echo "Generating SMS ROM..."
-${IHX2SMS} sneptest.ihx sneptest.sms
+echo ""
+echo "Generating ROM..."
+${ihx2sms} build/sneptest.ihx sneptest.sms || exit 1
+
+echo ""
+echo "Done"
