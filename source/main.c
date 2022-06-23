@@ -90,6 +90,29 @@ void draw_string (int x, int y, char *string)
     SMS_loadTileMapArea (x, y, name_table, count, 1);
 }
 
+void draw_string_priority (int x, int y, char *string)
+{
+    uint16_t name_table[32] = { 0 };
+    int count = 0;
+
+    while (string[count])
+    {
+        if      (string[count] >= ' ' && string[count] <= 'Z')
+        {
+            name_table[count] =  0x1000 | (string[count] - ' ');
+        }
+        /* Default to space */
+        else
+        {
+            name_table[count] = 0;
+        }
+
+        count++;
+    }
+
+    SMS_loadTileMapArea (x, y, name_table, count, 1);
+}
+
 void clear_screen (void)
 {
     uint16_t name_table[32] = { 0 };
@@ -357,6 +380,101 @@ void vdp_sprite_test (void)
     SMS_copySpritestoSAT ();
 }
 
+void vdp_settings (void)
+{
+    char string_buf[3] = { '\0' };
+    uint16_t cursor = 0;
+    uint8_t line = 0;
+    uint8_t backdrop_colour = 0;
+    bool blank = false;
+
+    clear_screen ();
+
+    SMS_setSpritePaletteColor (1, 0x0f); /* Yellow at index 1 (sprite font) */
+
+    draw_string ( 3,  line += 3,  "VDP Settings");
+    draw_string (10, line += 4,  "BACKDROP:");
+    draw_string (10, line += 2,  "BLANK Y:");
+    draw_string_priority (10, line += 4,  "PRIORITY STRING");
+
+    draw_string (7, 23, "1: BACK, 2: TOGGLE");
+
+    while (true)
+    {
+        unsigned int pressed;
+        SMS_waitForVBlank ();
+
+        /* Clear cursor */
+        draw_string (5, 7 + (cursor << 1), "  ");
+
+        uint8_to_string (string_buf, backdrop_colour);
+        draw_string (22, 7, string_buf);
+
+        uint8_to_string (string_buf, blank);
+        draw_string (22, 9, string_buf);
+
+        pressed = SMS_getKeysPressed ();
+
+        if (pressed & PORT_A_KEY_UP)
+        {
+            if (--cursor > 1)
+                cursor = 0;
+        }
+        else if (pressed & PORT_A_KEY_DOWN)
+        {
+            if (++cursor > 1)
+                cursor = 1;
+        }
+        else if (pressed & (PORT_A_KEY_LEFT | PORT_A_KEY_RIGHT))
+        {
+            switch (cursor)
+            {
+                case 0:
+                    if (pressed & PORT_A_KEY_RIGHT)
+                    {
+                        backdrop_colour++;
+                        backdrop_colour &= 0x0f;
+                        SMS_setBackdropColor (backdrop_colour);
+                    }
+                    else
+                    {
+                        backdrop_colour--;
+                        backdrop_colour &= 0x0f;
+                        SMS_setBackdropColor (backdrop_colour);
+                    }
+                    break;
+                default:
+            }
+        }
+        else if (pressed & PORT_A_KEY_2)
+        {
+            switch (cursor)
+            {
+                case 1:
+                    if (blank == false)
+                    {
+                        blank = true;
+                        SMS_displayOff ();
+                    }
+                    else
+                    {
+                        blank = false;
+                        SMS_displayOn ();
+                    }
+                    break;
+
+                default: break;
+            }
+        }
+
+        if (pressed & PORT_A_KEY_1)     break;
+
+        draw_string (5, 7 + (cursor << 1), "->");
+    }
+
+    SMS_setBackdropColor (0);
+}
+
 void main (void)
 {
     uint16_t cursor = 0;
@@ -377,17 +495,18 @@ menu_start:
     line = 0;
 
     clear_screen ();
-    draw_string (7, 23, "1: BACK, 2: SELECT");
 
     draw_string ( 3,  line += 3,  "TEST ROM FOR SMS EMULATORS");
     draw_string ( 8,  line += 4,  "INPUT");
     draw_string ( 8,  line += 2,  "SCROLLING");
     draw_string ( 8,  line += 2,  "FONT");
     draw_string ( 8,  line += 2,  "VDP INTERRUPTS");
-    draw_string ( 8,  line += 2,  "SPRITES");
+    draw_string ( 8,  line += 2,  "VDP SPRITES");
+    draw_string ( 8,  line += 2,  "VDP SETTINGS");
+
+    draw_string (7, 23, "1: BACK, 2: SELECT");
     /* TODO: Pause button */
     /* TODO: Instructions/flags */
-
 
     while (true)
     {
@@ -400,13 +519,13 @@ menu_start:
         pressed = SMS_getKeysPressed ();
         if (pressed & PORT_A_KEY_UP)
         {
-            if (--cursor > 4)
+            if (--cursor > 5)
                 cursor = 0;
         }
         else if (pressed & PORT_A_KEY_DOWN)
         {
-            if (++cursor > 4)
-                cursor = 4;
+            if (++cursor > 5)
+                cursor = 5;
         }
         else if (pressed & PORT_A_KEY_2)
         {
@@ -430,6 +549,10 @@ menu_start:
 
                 case 4:
                     vdp_sprite_test ();
+                    goto menu_start;
+
+                case 5:
+                    vdp_settings ();
                     goto menu_start;
 
                 default: break;
