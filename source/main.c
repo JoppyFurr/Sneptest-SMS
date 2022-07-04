@@ -128,7 +128,7 @@ void clear_screen (void)
 void font_test (void)
 {
     clear_screen ();
-    draw_string (7, 23, "1: BACK, 2: SELECT");
+    draw_string (7, 23, "1: SELECT, 2: BACK");
 
     draw_string (1, 3,  "FONT:");
     draw_string (4, 6,  "A B C D E F G H I J K L");
@@ -146,7 +146,7 @@ void font_test (void)
         SMS_waitForVBlank ();
 
         pressed = SMS_getKeysPressed ();
-        if (pressed & PORT_A_KEY_1)
+        if (pressed & PORT_A_KEY_2)
             break;
     }
 }
@@ -173,7 +173,7 @@ void scroll_test (void)
     unsigned int scroll_y = 0;
 
     clear_screen ();
-    draw_string (7, 23, "1: BACK, 2: SLOW");
+    draw_string (7, 23, "1: SLOW, 2: BACK");
 
     draw_string (10, 12,  "SCROLL X:");
     draw_string (10, 14,  "SCROLL Y:");
@@ -194,14 +194,14 @@ void scroll_test (void)
 
         /* Input handling */
         pressed = SMS_getKeysStatus ();
-        if (pressed & PORT_A_KEY_2)
+        if (pressed & PORT_A_KEY_1)
             pressed = SMS_getKeysPressed ();
 
         if (pressed & PORT_A_KEY_UP)    scroll_y++;
         if (pressed & PORT_A_KEY_DOWN)  scroll_y--;
         if (pressed & PORT_A_KEY_LEFT)  scroll_x--;
         if (pressed & PORT_A_KEY_RIGHT) scroll_x++;
-        if (pressed & PORT_A_KEY_1)     break;
+        if (pressed & PORT_A_KEY_2)     break;
     }
 
     SMS_setBGScrollX (0);
@@ -277,7 +277,7 @@ void vdp_interrupt_test (void)
     SMS_enableLineInterrupt();
 
     clear_screen ();
-    draw_string (7, 23, "1: BACK, 2: SLOW");
+    draw_string (7, 23, "1: SLOW, 2: BACK");
 
     draw_string (10, 12,  "RELOAD:");
     draw_string (10, 14,  "SEEN:");
@@ -299,7 +299,7 @@ void vdp_interrupt_test (void)
 
         /* Input handling */
         pressed = SMS_getKeysStatus ();
-        if (pressed & PORT_A_KEY_2)
+        if (pressed & PORT_A_KEY_1)
             pressed = SMS_getKeysPressed ();
 
         if (pressed & PORT_A_KEY_UP)
@@ -312,7 +312,7 @@ void vdp_interrupt_test (void)
             counter_reload--;
             SMS_setLineCounter (counter_reload);
         }
-        if (pressed & PORT_A_KEY_1)     break;
+        if (pressed & PORT_A_KEY_2)     break;
     }
 
     SMS_disableLineInterrupt();
@@ -326,7 +326,7 @@ void vdp_sprite_test (void)
     signed char sprite_index = 0;
 
     clear_screen ();
-    draw_string (7, 23, "1: BACK, 2: SLOW");
+    draw_string (7, 23, "1: SLOW, 2: BACK");
 
     draw_string (10, 12,  "SPRITE X:");
     draw_string (10, 14,  "SPRITE Y:");
@@ -353,7 +353,7 @@ void vdp_sprite_test (void)
 
         /* Input handling */
         pressed = SMS_getKeysStatus ();
-        if (pressed & PORT_A_KEY_2)
+        if (pressed & PORT_A_KEY_1)
             pressed = SMS_getKeysPressed ();
 
         if (pressed & PORT_A_KEY_UP)
@@ -372,7 +372,7 @@ void vdp_sprite_test (void)
         {
             sprite_x++;
         }
-        if (pressed & PORT_A_KEY_1)     break;
+        if (pressed & PORT_A_KEY_2)     break;
     }
 
     SMS_initSprites ();
@@ -397,7 +397,7 @@ void vdp_settings (void)
     draw_string (10, line += 2,  "BLANK Y:");
     draw_string_priority (10, line += 4,  "PRIORITY STRING");
 
-    draw_string (7, 23, "1: BACK, 2: TOGGLE");
+    draw_string (7, 23, "1: TOGGLE, 2: BACK");
 
     while (true)
     {
@@ -446,7 +446,7 @@ void vdp_settings (void)
                 default:
             }
         }
-        else if (pressed & PORT_A_KEY_2)
+        else if (pressed & PORT_A_KEY_1)
         {
             switch (cursor)
             {
@@ -467,7 +467,7 @@ void vdp_settings (void)
             }
         }
 
-        if (pressed & PORT_A_KEY_1)     break;
+        if (pressed & PORT_A_KEY_2)     break;
 
         draw_string (5, 7 + (cursor << 1), "->");
     }
@@ -504,7 +504,7 @@ menu_start:
     draw_string ( 8,  line += 2,  "VDP SPRITES");
     draw_string ( 8,  line += 2,  "VDP SETTINGS");
 
-    draw_string (7, 23, "1: BACK, 2: SELECT");
+    draw_string (7, 23, "1: SELECT, 2: BACK");
     /* TODO: Pause button */
     /* TODO: Instructions/flags */
 
@@ -527,7 +527,7 @@ menu_start:
             if (++cursor > 5)
                 cursor = 5;
         }
-        else if (pressed & PORT_A_KEY_2)
+        else if (pressed & PORT_A_KEY_1)
         {
             switch (cursor)
             {

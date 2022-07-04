@@ -1,4 +1,4 @@
 # Ignore build artefacts and output
-build/
+work/
 *.sms
 
