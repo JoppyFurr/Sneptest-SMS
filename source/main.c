@@ -1,8 +1,19 @@
+/*
+ * Sneptest SMS
+ *
+ * This tool allows testing various features of the Sega Master System.
+ * Its purpose is to allow comparisons of how different feauters behave
+ * across emulators and Sega hardware.
+ */
+
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "SMSlib.h"
 
-const uint32_t patterns[] = {
+const uint8_t patterns[] = {
 
     /* Public-domain 8x8 font from https://github.com/dhepper/font8x8 */
 
@@ -65,7 +76,19 @@ const uint32_t patterns[] = {
     0xc6, 0xc6, 0x6c, 0x38, 0x38, 0x6c, 0xc6, 0x00,  /* U+0058 (X) */
     0xcc, 0xcc, 0xcc, 0x78, 0x30, 0x30, 0x78, 0x00,  /* U+0059 (Y) */
     0xfe, 0xc6, 0x8c, 0x18, 0x32, 0x66, 0xfe, 0x00,  /* U+005A (Z) */
+
+    /* Box drawing */
+    0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0x00,  /* Box h-line */
+    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,  /* Box v-line */
+    0x00, 0x00, 0x00, 0xc0, 0x20, 0x10, 0x10, 0x10,  /* Box tr-corner */
+    0x10, 0x10, 0x20, 0xc0, 0x00, 0x00, 0x00, 0x00,  /* Box br-corner */
 };
+
+#define BOX_LINE_H    59
+#define BOX_LINE_V    60
+#define BOX_CORNER_TR 61
+#define BOX_CORNER_BR 62
+
 
 void draw_string (int x, int y, char *string)
 {
@@ -90,6 +113,164 @@ void draw_string (int x, int y, char *string)
     SMS_loadTileMapArea (x, y, name_table, count, 1);
 }
 
+
+void clear_screen (void)
+{
+    uint16_t name_table[32] = { 0 };
+    for (int i = 0; i < 28; i++)
+    {
+        SMS_loadTileMapArea (0, i, name_table, 32, 1);
+    }
+}
+
+
+/* Menu state */
+
+typedef struct menu_item_s {
+    char *name;
+    void (*func) (void);
+} menu_item;
+
+#define MENU_LEN_MAX 8
+
+static char *menu_title = NULL;
+static menu_item menu [MENU_LEN_MAX];
+static uint8_t menu_len = 0;
+static uint8_t menu_cursor = 0;
+
+/*
+ * Start a new menu.
+ */
+void menu_new (char *title)
+{
+    menu_title = title;
+    menu_len = 0;
+    menu_cursor = 0;
+}
+
+
+/*
+ * Add a selectable menu item.
+ */
+void menu_item_add (char *name, void (*func) (void))
+{
+    menu [menu_len].name = name;
+    menu [menu_len].func = func;
+    menu_len++;
+}
+
+
+/*
+ * Update the VDP with the current menu state.
+ */
+void menu_update (void)
+{
+    for (uint8_t i = 0; i < menu_len; i++)
+    {
+        draw_string (1, 4 + (2 * i), (i == menu_cursor) ? "->" : "  ");
+    }
+}
+
+
+/*
+ * Initial draw of the menu to the VDP.
+ */
+void menu_draw (void)
+{
+    uint8_t title_len;
+    uint8_t str_buf [32] = "";
+    uint16_t name_table [32];
+    uint8_t i;
+
+    clear_screen ();
+
+    /* Title */
+    title_len = sprintf (str_buf, "%s", menu_title);
+    draw_string (1, 1, str_buf);
+
+    /* Bottom-rule */
+    for (i = 0; i < 32; i++)
+    {
+        name_table [i] = BOX_LINE_H;
+    }
+    SMS_loadTileMapArea (0, 22, name_table, 32, 1);
+
+    /* Title border */
+    name_table [title_len + 2] = BOX_CORNER_TR;
+    SMS_loadTileMapArea (0, 0, name_table, title_len + 3, 1);
+
+    name_table [title_len + 2] = BOX_LINE_V;
+    SMS_loadTileMapArea (title_len + 2, 1, &name_table [title_len + 2], 1, 1);
+
+    name_table [title_len + 2] = BOX_CORNER_BR;
+    SMS_loadTileMapArea (0, 2, name_table, title_len + 3, 1);
+
+    /* Menu items */
+    for (i = 0; i < menu_len; i++)
+    {
+        draw_string (4, 4 + (2 * i), menu [i].name);
+    }
+
+    /* Reference */
+    draw_string (0, 23, "      1: SELECT     2: BACK     ");
+
+    menu_update ();
+}
+
+
+/*
+ * Run a menu.
+ */
+void menu_run (void (*menu_func) (void))
+{
+    unsigned int pressed;
+    uint8_t cursor_store;
+
+    menu_func ();
+    SMS_waitForVBlank ();
+    menu_draw ();
+
+    while (true)
+    {
+        SMS_waitForVBlank ();
+        pressed = SMS_getKeysPressed ();
+
+        if (pressed & PORT_A_KEY_UP)
+        {
+            menu_cursor--;
+            if (menu_cursor > menu_len)
+            {
+                menu_cursor = 0;
+            }
+        }
+        else if (pressed & PORT_A_KEY_DOWN)
+        {
+            menu_cursor++;
+            if (menu_cursor >= menu_len)
+            {
+                menu_cursor = menu_len - 1;
+            }
+        }
+        else if (pressed & PORT_A_KEY_1)
+        {
+            if (menu [menu_cursor].func)
+            {
+                cursor_store = menu_cursor;
+                menu [menu_cursor].func ();
+                menu_func ();
+                menu_draw ();
+                menu_cursor = cursor_store;
+            }
+        }
+        else if (pressed & PORT_A_KEY_2)
+        {
+            return;
+        }
+        menu_update ();
+    }
+}
+
+
 void draw_string_priority (int x, int y, char *string)
 {
     uint16_t name_table[32] = { 0 };
@@ -113,43 +294,6 @@ void draw_string_priority (int x, int y, char *string)
     SMS_loadTileMapArea (x, y, name_table, count, 1);
 }
 
-void clear_screen (void)
-{
-    uint16_t name_table[32] = { 0 };
-    for (int i = 0; i < 28; i++)
-    {
-        SMS_loadTileMapArea (0, i, name_table, 32, 1);
-    }
-
-    draw_string (1,  0,  "SNEP TEST SMS");
-    draw_string (0,  1, "---------------");
-}
-
-void font_test (void)
-{
-    clear_screen ();
-    draw_string (7, 23, "1: SELECT, 2: BACK");
-
-    draw_string (1, 3,  "FONT:");
-    draw_string (4, 6,  "A B C D E F G H I J K L");
-    draw_string (4, 8,  "M N O P Q R S T U V W X");
-    draw_string (4, 10,  "Y Z");
-
-    draw_string (4, 13, "0 1 2 3 4 5 6 7 8 9");
-
-    draw_string (4, 16, "! \" # $ % & ' ( ) * + ,");
-    draw_string (4, 18, "- . / : ; < = > ? @");
-
-    while (true)
-    {
-        unsigned int pressed;
-        SMS_waitForVBlank ();
-
-        pressed = SMS_getKeysPressed ();
-        if (pressed & PORT_A_KEY_2)
-            break;
-    }
-}
 
 void uint8_to_string (char *string, uint8_t value)
 {
@@ -475,92 +619,37 @@ void vdp_settings (void)
     SMS_setBackdropColor (0);
 }
 
+
+/*
+ * Main menu, shown to the user at startup.
+ */
+void main_menu (void)
+{
+    menu_new ("SNEPTEST SMS");
+    menu_item_add ("INPUT", input_test);
+    menu_item_add ("VDP SCROLLING", scroll_test);
+    menu_item_add ("VDP INTERRUPTS", vdp_interrupt_test);
+    menu_item_add ("VDP SPRITES", vdp_sprite_test);
+    menu_item_add ("VDP SETTINGS", vdp_settings);
+}
+
+
+/*
+ * Main.
+ */
 void main (void)
 {
-    uint16_t cursor = 0;
-    bool first_draw = true;
-    uint8_t line;
-
     SMS_setBackdropColor (0);
-    SMS_setBGPaletteColor (0, 0x01); /* Dark red at index 0 (background) */
-    SMS_setBGPaletteColor (1, 0x3f); /* White at index 1    (font)       */
-    SMS_setBGPaletteColor (2, 0x00); /* Black   at index 0 */
+    SMS_setSpritePaletteColor (0, 0x01);    /* Sprite 0: Dark red (backdrop) */
+    SMS_setBGPaletteColor (0, 0x01);        /* Background 0: Dark red */
+    SMS_setBGPaletteColor (1, 0x3f);        /* Background 1: White (text) */
 
-    SMS_loadTiles (patterns, 0, sizeof (patterns));
+    SMS_load1bppTiles (patterns, 0, sizeof (patterns), 0, 1);
 
     SMS_displayOn ();
 
-menu_start:
-
-    line = 0;
-
-    clear_screen ();
-
-    draw_string ( 3,  line += 3,  "TEST ROM FOR SMS EMULATORS");
-    draw_string ( 8,  line += 4,  "INPUT");
-    draw_string ( 8,  line += 2,  "SCROLLING");
-    draw_string ( 8,  line += 2,  "FONT");
-    draw_string ( 8,  line += 2,  "VDP INTERRUPTS");
-    draw_string ( 8,  line += 2,  "VDP SPRITES");
-    draw_string ( 8,  line += 2,  "VDP SETTINGS");
-
-    draw_string (7, 23, "1: SELECT, 2: BACK");
-    /* TODO: Pause button */
-    /* TODO: Instructions/flags */
-
     while (true)
     {
-        unsigned int pressed;
-        SMS_waitForVBlank ();
-
-        /* Clear cursor */
-        draw_string (5, 7 + (cursor << 1), "  ");
-
-        pressed = SMS_getKeysPressed ();
-        if (pressed & PORT_A_KEY_UP)
-        {
-            if (--cursor > 5)
-                cursor = 0;
-        }
-        else if (pressed & PORT_A_KEY_DOWN)
-        {
-            if (++cursor > 5)
-                cursor = 5;
-        }
-        else if (pressed & PORT_A_KEY_1)
-        {
-            switch (cursor)
-            {
-                case 0:
-                    input_test ();
-                    goto menu_start;
-
-                case 1:
-                    scroll_test ();
-                    goto menu_start;
-
-                case 2:
-                    font_test ();
-                    goto menu_start;
-
-                case 3:
-                    vdp_interrupt_test ();
-                    goto menu_start;
-
-                case 4:
-                    vdp_sprite_test ();
-                    goto menu_start;
-
-                case 5:
-                    vdp_settings ();
-                    goto menu_start;
-
-                default: break;
-            }
-        }
-
-        /* Draw cursor */
-        draw_string (5, 7 + (cursor << 1), "->");
-
+        menu_run (main_menu);
     }
 }
