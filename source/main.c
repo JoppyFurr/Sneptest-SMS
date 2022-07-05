@@ -127,8 +127,12 @@ void clear_screen (void)
 /* Menu state */
 
 typedef struct menu_item_s {
+    uint8_t type;
     char *name;
     void (*func) (void);
+    uint16_t value;
+    uint16_t value_max;
+    void (*value_func) (uint16_t);
 } menu_item;
 
 #define MENU_LEN_MAX 8
@@ -148,14 +152,28 @@ void menu_new (char *title)
     menu_cursor = 0;
 }
 
+#define MENU_ITEM_FUNCTION  0
+#define MENU_ITEM_VALUE     1
 
 /*
  * Add a selectable menu item.
  */
 void menu_item_add (char *name, void (*func) (void))
 {
+    menu [menu_len].type = MENU_ITEM_FUNCTION;
     menu [menu_len].name = name;
     menu [menu_len].func = func;
+    menu_len++;
+}
+
+
+void menu_item_add_value (char *name, uint16_t max, void (*func) (uint16_t))
+{
+    menu [menu_len].type = MENU_ITEM_VALUE;
+    menu [menu_len].name = name;
+    menu [menu_len].value = 0;
+    menu [menu_len].value_max = max;
+    menu [menu_len].value_func = func;
     menu_len++;
 }
 
@@ -165,9 +183,19 @@ void menu_item_add (char *name, void (*func) (void))
  */
 void menu_update (void)
 {
+    uint8_t str_buf [32] = "";
+
+    /* Re-draw the cursor */
     for (uint8_t i = 0; i < menu_len; i++)
     {
         draw_string (1, 4 + (2 * i), (i == menu_cursor) ? "->" : "  ");
+    }
+
+    /* If the cursor is on a value chooser, redraw the number */
+    if (menu [menu_cursor].type == MENU_ITEM_VALUE)
+    {
+        sprintf (str_buf, "%s: %02X", menu [menu_cursor].name, menu [menu_cursor].value);
+        draw_string (4, 4 + (2 * menu_cursor), str_buf);
     }
 }
 
@@ -208,7 +236,15 @@ void menu_draw (void)
     /* Menu items */
     for (i = 0; i < menu_len; i++)
     {
-        draw_string (4, 4 + (2 * i), menu [i].name);
+        if (menu [i].type == MENU_ITEM_FUNCTION)
+        {
+            draw_string (4, 4 + (2 * i), menu [i].name);
+        }
+        else if (menu [i].type == MENU_ITEM_VALUE)
+        {
+            sprintf (str_buf, "%s: %02X", menu [i].name, menu [i].value);
+            draw_string (4, 4 + (2 * i), str_buf);
+        }
     }
 
     /* Reference */
@@ -251,9 +287,33 @@ void menu_run (void (*menu_func) (void))
                 menu_cursor = menu_len - 1;
             }
         }
+        else if (menu [menu_cursor].type == MENU_ITEM_VALUE && pressed & PORT_A_KEY_LEFT)
+        {
+            menu [menu_cursor].value--;
+            if (menu [menu_cursor].value > menu [menu_cursor].value_max)
+            {
+                menu [menu_cursor].value = 0;
+            }
+            if (menu [menu_cursor].value_func)
+            {
+                menu [menu_cursor].value_func (menu [menu_cursor].value);
+            }
+        }
+        else if (menu [menu_cursor].type == MENU_ITEM_VALUE && pressed & PORT_A_KEY_RIGHT)
+        {
+            menu [menu_cursor].value++;
+            if (menu [menu_cursor].value > menu [menu_cursor].value_max)
+            {
+                menu [menu_cursor].value = menu [menu_cursor].value_max;
+            }
+            if (menu [menu_cursor].value_func)
+            {
+                menu [menu_cursor].value_func (menu [menu_cursor].value);
+            }
+        }
         else if (pressed & PORT_A_KEY_1)
         {
-            if (menu [menu_cursor].func)
+            if (menu [menu_cursor].type == MENU_ITEM_FUNCTION && menu [menu_cursor].func)
             {
                 cursor_store = menu_cursor;
                 menu [menu_cursor].func ();
@@ -295,6 +355,9 @@ void draw_string_priority (int x, int y, char *string)
 }
 
 
+/*
+ * TODO: Remove when remaining code is converted to new menu framework.
+ */
 void uint8_to_string (char *string, uint8_t value)
 {
     /* Most-significant nibble */
@@ -310,6 +373,10 @@ void uint8_to_string (char *string, uint8_t value)
         string[1] = 'A' + (value & 0x0f) - 10;
 }
 
+
+/*
+ * Test for VDP scrolling behaviour.
+ */
 void scroll_test (void)
 {
     char string_buf[3] = { '\0' };
@@ -352,6 +419,10 @@ void scroll_test (void)
     SMS_setBGScrollY (0);
 }
 
+
+/*
+ * Test for SMS gamepad behaviour.
+ */
 void input_test (void)
 {
     char string_buf[3] = { '\0' };
@@ -410,6 +481,10 @@ void vdp_interrupt_test_handler (void)
     line_interrupt_count++;
 }
 
+
+/*
+ * Test for VDP line-interrupt behaviour.
+ */
 void vdp_interrupt_test (void)
 {
     char string_buf[3] = { '\0' };
@@ -462,6 +537,10 @@ void vdp_interrupt_test (void)
     SMS_disableLineInterrupt();
 }
 
+
+/*
+ * Test for sprite behaviour.
+ */
 void vdp_sprite_test (void)
 {
     char string_buf[3] = { '\0' };
@@ -476,7 +555,6 @@ void vdp_sprite_test (void)
     draw_string (10, 14,  "SPRITE Y:");
 
     SMS_useFirstHalfTilesforSprites (true);
-    SMS_setSpritePaletteColor (1, 0x0f); /* Yellow at index 1 (sprite font) */
 
     SMS_initSprites();
     sprite_index = SMS_addSprite (sprite_x, sprite_y, '#' - ' ');
@@ -524,99 +602,42 @@ void vdp_sprite_test (void)
     SMS_copySpritestoSAT ();
 }
 
-void vdp_settings (void)
+
+void vdp_background_backdrop_set (uint16_t value)
 {
-    char string_buf[3] = { '\0' };
-    uint16_t cursor = 0;
-    uint8_t line = 0;
-    uint8_t backdrop_colour = 0;
-    bool blank = false;
+    SMS_setBackdropColor (value);
+}
 
-    clear_screen ();
 
-    SMS_setSpritePaletteColor (1, 0x0f); /* Yellow at index 1 (sprite font) */
-
-    draw_string ( 3,  line += 3,  "VDP Settings");
-    draw_string (10, line += 4,  "BACKDROP:");
-    draw_string (10, line += 2,  "BLANK Y:");
-    draw_string_priority (10, line += 4,  "PRIORITY STRING");
-
-    draw_string (7, 23, "1: TOGGLE, 2: BACK");
-
-    while (true)
+void vdp_background_blank_set (uint16_t value)
+{
+    if (value)
     {
-        unsigned int pressed;
-        SMS_waitForVBlank ();
-
-        /* Clear cursor */
-        draw_string (5, 7 + (cursor << 1), "  ");
-
-        uint8_to_string (string_buf, backdrop_colour);
-        draw_string (22, 7, string_buf);
-
-        uint8_to_string (string_buf, blank);
-        draw_string (22, 9, string_buf);
-
-        pressed = SMS_getKeysPressed ();
-
-        if (pressed & PORT_A_KEY_UP)
-        {
-            if (--cursor > 1)
-                cursor = 0;
-        }
-        else if (pressed & PORT_A_KEY_DOWN)
-        {
-            if (++cursor > 1)
-                cursor = 1;
-        }
-        else if (pressed & (PORT_A_KEY_LEFT | PORT_A_KEY_RIGHT))
-        {
-            switch (cursor)
-            {
-                case 0:
-                    if (pressed & PORT_A_KEY_RIGHT)
-                    {
-                        backdrop_colour++;
-                        backdrop_colour &= 0x0f;
-                        SMS_setBackdropColor (backdrop_colour);
-                    }
-                    else
-                    {
-                        backdrop_colour--;
-                        backdrop_colour &= 0x0f;
-                        SMS_setBackdropColor (backdrop_colour);
-                    }
-                    break;
-                default:
-            }
-        }
-        else if (pressed & PORT_A_KEY_1)
-        {
-            switch (cursor)
-            {
-                case 1:
-                    if (blank == false)
-                    {
-                        blank = true;
-                        SMS_displayOff ();
-                    }
-                    else
-                    {
-                        blank = false;
-                        SMS_displayOn ();
-                    }
-                    break;
-
-                default: break;
-            }
-        }
-
-        if (pressed & PORT_A_KEY_2)     break;
-
-        draw_string (5, 7 + (cursor << 1), "->");
+        SMS_displayOff ();
     }
+    else
+    {
+        SMS_displayOn ();
+    }
+}
 
+
+/*
+ * Test for the background and backtrop behaviour.
+ */
+void vdp_background_menu (void)
+{
+    menu_new ("VDP BACKGROUND");
+    menu_item_add_value ("BACKDROP", 0x0f, vdp_background_backdrop_set);
+    menu_item_add_value ("BLANKING", 0x01, vdp_background_blank_set);
+
+    /* TODO: draw_string_priority (10, y,  "PRIORITY STRING"); */
+}
+void vdp_background (void)
+{
+    menu_run (vdp_background_menu);
     SMS_setBackdropColor (0);
+    SMS_displayOn ();
 }
 
 
@@ -630,17 +651,14 @@ void main_menu (void)
     menu_item_add ("VDP SCROLLING", scroll_test);
     menu_item_add ("VDP INTERRUPTS", vdp_interrupt_test);
     menu_item_add ("VDP SPRITES", vdp_sprite_test);
-    menu_item_add ("VDP SETTINGS", vdp_settings);
+    menu_item_add ("VDP BACKGROUND", vdp_background);
 }
-
-
-/*
- * Main.
- */
 void main (void)
 {
+    /* Initial setup */
     SMS_setBackdropColor (0);
     SMS_setSpritePaletteColor (0, 0x01);    /* Sprite 0: Dark red (backdrop) */
+    SMS_setSpritePaletteColor (1, 0x0f);    /* Sprite 1: Yellow (text as sprite) */
     SMS_setBGPaletteColor (0, 0x01);        /* Background 0: Dark red */
     SMS_setBGPaletteColor (1, 0x3f);        /* Background 1: White (text) */
 
