@@ -201,29 +201,23 @@ void menu_update (void)
 
 
 /*
- * Initial draw of the menu to the VDP.
+ * Draw a bordered title for the current screen.
  */
-void menu_draw (void)
+void title_draw (char *title)
 {
     uint8_t title_len;
     uint8_t str_buf [32] = "";
     uint16_t name_table [32];
-    uint8_t i;
 
-    clear_screen ();
-
-    /* Title */
-    title_len = sprintf (str_buf, "%s", menu_title);
+    title_len = sprintf (str_buf, "%s", title);
     draw_string (1, 1, str_buf);
 
-    /* Bottom-rule */
-    for (i = 0; i < 32; i++)
+    for (uint8_t i = 0; i < title_len + 2; i++)
     {
         name_table [i] = BOX_LINE_H;
     }
-    SMS_loadTileMapArea (0, 22, name_table, 32, 1);
 
-    /* Title border */
+    /* Border */
     name_table [title_len + 2] = BOX_CORNER_TR;
     SMS_loadTileMapArea (0, 0, name_table, title_len + 3, 1);
 
@@ -232,9 +226,40 @@ void menu_draw (void)
 
     name_table [title_len + 2] = BOX_CORNER_BR;
     SMS_loadTileMapArea (0, 2, name_table, title_len + 3, 1);
+}
+
+
+/*
+ * Draw a line of help text below a rule at the bottom of the screen.
+ */
+void reference_draw (char *text)
+{
+    uint16_t name_table [32];
+
+    /* Bottom-rule */
+    for (uint8_t i = 0; i < 32; i++)
+    {
+        name_table [i] = BOX_LINE_H;
+    }
+    SMS_loadTileMapArea (0, 22, name_table, 32, 1);
+
+    /* Text */
+    draw_string (0, 23, text);
+}
+
+
+/*
+ * Initial draw of the menu to the VDP.
+ */
+void menu_draw (void)
+{
+    uint8_t str_buf [32] = "";
+
+    clear_screen ();
+    title_draw (menu_title);
 
     /* Menu items */
-    for (i = 0; i < menu_len; i++)
+    for (uint8_t i = 0; i < menu_len; i++)
     {
         if (menu [i].type == MENU_ITEM_FUNCTION)
         {
@@ -247,9 +272,7 @@ void menu_draw (void)
         }
     }
 
-    /* Reference */
-    draw_string (0, 23, "      1: SELECT     2: BACK     ");
-
+    reference_draw ("      1: SELECT     2: BACK     ");
     menu_update ();
 }
 
@@ -384,7 +407,8 @@ void scroll_test (void)
     unsigned int scroll_y = 0;
 
     clear_screen ();
-    draw_string (7, 23, "1: SLOW, 2: BACK");
+    title_draw ("VDP SCROLLING");
+    reference_draw ("      1: SLOW       2: BACK     ");
 
     draw_string (10, 12,  "SCROLL X:");
     draw_string (10, 14,  "SCROLL Y:");
@@ -431,7 +455,8 @@ void input_test (void)
     uint8_t line;
 
     clear_screen ();
-    draw_string (10, 23, "1 + 2: BACK");
+    title_draw ("INPUT TEST");
+    reference_draw ("          1 + 2: BACK           ");
 
     draw_string (4, line  = 4,  "PLAYER 1");
     draw_string (4, line += 3,  "UP");
@@ -484,8 +509,9 @@ void vdp_interrupt_test_handler (void)
 
 /*
  * Test for VDP line-interrupt behaviour.
+ * TODO: Option to change background in interrupt handler.
  */
-void vdp_interrupt_test (void)
+void vdp_line_interrupt_test (void)
 {
     char string_buf[3] = { '\0' };
     unsigned int counter_reload = 128;
@@ -496,10 +522,13 @@ void vdp_interrupt_test (void)
     SMS_enableLineInterrupt();
 
     clear_screen ();
-    draw_string (7, 23, "1: SLOW, 2: BACK");
+    title_draw ("VDP LINE INTERRUPTS");
+    reference_draw ("      1: SLOW       2: BACK     ");
 
-    draw_string (10, 12,  "RELOAD:");
-    draw_string (10, 14,  "SEEN:");
+    draw_string (6, 10,  "COUNTER RELOAD:");
+
+    draw_string (6, 12,  "INTERRUPTS");
+    draw_string (6, 13,  "THIS FRAME:");
 
     while (true)
     {
@@ -512,9 +541,9 @@ void vdp_interrupt_test (void)
 
         /* Render during vblank */
         uint8_to_string (string_buf, counter_reload);
-        draw_string (20, 12, string_buf);
+        draw_string (22, 10, string_buf);
         uint8_to_string (string_buf, count_last_frame);
-        draw_string (20, 14, string_buf);
+        draw_string (22, 13, string_buf);
 
         /* Input handling */
         pressed = SMS_getKeysStatus ();
@@ -549,7 +578,8 @@ void vdp_sprite_test (void)
     signed char sprite_index = 0;
 
     clear_screen ();
-    draw_string (7, 23, "1: SLOW, 2: BACK");
+    title_draw ("VDP SPRITES");
+    reference_draw ("      1: SLOW       2: BACK     ");
 
     draw_string (10, 12,  "SPRITE X:");
     draw_string (10, 14,  "SPRITE Y:");
@@ -649,10 +679,12 @@ void main_menu (void)
     menu_new ("SNEPTEST SMS");
     menu_item_add ("INPUT", input_test);
     menu_item_add ("VDP SCROLLING", scroll_test);
-    menu_item_add ("VDP INTERRUPTS", vdp_interrupt_test);
+    menu_item_add ("VDP LINE INTERRUPTS", vdp_line_interrupt_test);
     menu_item_add ("VDP SPRITES", vdp_sprite_test);
     menu_item_add ("VDP BACKGROUND", vdp_background);
 }
+
+
 void main (void)
 {
     /* Initial setup */
