@@ -283,7 +283,9 @@ void menu_draw (void)
  */
 void menu_run (void (*menu_func) (void))
 {
-    unsigned int pressed;
+    uint16_t keys_pressed = 0;
+    uint16_t keys_status = 0;
+    uint8_t repeat = 0;
     uint8_t cursor_store;
 
     menu_func ();
@@ -293,9 +295,11 @@ void menu_run (void (*menu_func) (void))
     while (true)
     {
         SMS_waitForVBlank ();
-        pressed = SMS_getKeysPressed ();
+        keys_pressed = SMS_getKeysPressed ();
+        keys_status = SMS_getKeysStatus ();
 
-        if (pressed & PORT_A_KEY_UP)
+        /* Common menu controls: Up, Down, & Back */
+        if (keys_pressed & PORT_A_KEY_UP)
         {
             menu_cursor--;
             if (menu_cursor > menu_len)
@@ -303,7 +307,7 @@ void menu_run (void (*menu_func) (void))
                 menu_cursor = 0;
             }
         }
-        else if (pressed & PORT_A_KEY_DOWN)
+        else if (keys_pressed & PORT_A_KEY_DOWN)
         {
             menu_cursor++;
             if (menu_cursor >= menu_len)
@@ -311,33 +315,15 @@ void menu_run (void (*menu_func) (void))
                 menu_cursor = menu_len - 1;
             }
         }
-        else if (menu [menu_cursor].type == MENU_ITEM_VALUE && pressed & PORT_A_KEY_LEFT)
+        else if (keys_pressed & PORT_A_KEY_2)
         {
-            menu [menu_cursor].value--;
-            if (menu [menu_cursor].value > menu [menu_cursor].value_max)
-            {
-                menu [menu_cursor].value = 0;
-            }
-            if (menu [menu_cursor].value_func)
-            {
-                menu [menu_cursor].value_func (menu [menu_cursor].value);
-            }
+            return;
         }
-        else if (menu [menu_cursor].type == MENU_ITEM_VALUE && pressed & PORT_A_KEY_RIGHT)
+
+        /* Function items */
+        else if (menu [menu_cursor].type == MENU_ITEM_FUNCTION)
         {
-            menu [menu_cursor].value++;
-            if (menu [menu_cursor].value > menu [menu_cursor].value_max)
-            {
-                menu [menu_cursor].value = menu [menu_cursor].value_max;
-            }
-            if (menu [menu_cursor].value_func)
-            {
-                menu [menu_cursor].value_func (menu [menu_cursor].value);
-            }
-        }
-        else if (pressed & PORT_A_KEY_1)
-        {
-            if (menu [menu_cursor].type == MENU_ITEM_FUNCTION && menu [menu_cursor].func)
+            if ((keys_pressed & PORT_A_KEY_1) && menu [menu_cursor].func)
             {
                 cursor_store = menu_cursor;
                 menu [menu_cursor].func ();
@@ -346,10 +332,55 @@ void menu_run (void (*menu_func) (void))
                 menu_cursor = cursor_store;
             }
         }
-        else if (pressed & PORT_A_KEY_2)
+
+        /* Value items */
+        else if (menu [menu_cursor].type == MENU_ITEM_VALUE)
         {
-            return;
+            bool change = false;
+
+            /* Change the value if one of the following are true:
+             * - Left/Right were just pressed
+             * - The repeat-rate timer has elapsed
+             * - Button '1' is being held (fast-scroll)
+             */
+            if ((keys_pressed & (PORT_A_KEY_LEFT | PORT_A_KEY_RIGHT)) ||
+                (repeat >= REPEAT_RATE) ||
+                (keys_status & PORT_A_KEY_1))
+            {
+                change = true;
+                repeat = 0;
+            }
+            repeat++;
+
+            if (change)
+            {
+                if (keys_status & PORT_A_KEY_LEFT)
+                {
+                    menu [menu_cursor].value--;
+                    if (menu [menu_cursor].value > menu [menu_cursor].value_max)
+                    {
+                        menu [menu_cursor].value = 0;
+                    }
+                    if (menu [menu_cursor].value_func)
+                    {
+                        menu [menu_cursor].value_func (menu [menu_cursor].value);
+                    }
+                }
+                else if (keys_status & PORT_A_KEY_RIGHT)
+                {
+                    menu [menu_cursor].value++;
+                    if (menu [menu_cursor].value > menu [menu_cursor].value_max)
+                    {
+                        menu [menu_cursor].value = menu [menu_cursor].value_max;
+                    }
+                    if (menu [menu_cursor].value_func)
+                    {
+                        menu [menu_cursor].value_func (menu [menu_cursor].value);
+                    }
+                }
+            }
         }
+
         menu_update ();
     }
 }
@@ -404,7 +435,7 @@ void uint8_to_string (char *string, uint8_t value)
 void scroll_test (void)
 {
     char string_buf[3] = { '\0' };
-    uint16_t pressed;
+    uint16_t pressed = 0;
     uint16_t scroll_x = 0;
     uint16_t scroll_y = 0;
     uint8_t repeat = 0;
