@@ -89,6 +89,7 @@ const uint8_t patterns[] = {
 #define BOX_CORNER_TR 61
 #define BOX_CORNER_BR 62
 
+#define REPEAT_RATE 20
 
 void draw_string (int x, int y, char *string)
 {
@@ -403,19 +404,21 @@ void uint8_to_string (char *string, uint8_t value)
 void scroll_test (void)
 {
     char string_buf[3] = { '\0' };
-    unsigned int scroll_x = 0;
-    unsigned int scroll_y = 0;
+    uint16_t pressed;
+    uint16_t scroll_x = 0;
+    uint16_t scroll_y = 0;
+    uint8_t repeat = 0;
 
     clear_screen ();
     title_draw ("VDP SCROLLING");
-    reference_draw ("      1: SLOW       2: BACK     ");
+    reference_draw ("    1: FAST-SCROLL    2: BACK   ");
 
     draw_string (10, 12,  "SCROLL X:");
     draw_string (10, 14,  "SCROLL Y:");
 
-    while (true)
+    while (!(pressed & PORT_A_KEY_2))
     {
-        unsigned int pressed;
+        bool move = false;
         SMS_waitForVBlank ();
 
         SMS_setBGScrollX (scroll_x);
@@ -429,14 +432,35 @@ void scroll_test (void)
 
         /* Input handling */
         pressed = SMS_getKeysStatus ();
-        if (pressed & PORT_A_KEY_1)
-            pressed = SMS_getKeysPressed ();
 
-        if (pressed & PORT_A_KEY_UP)    scroll_y++;
-        if (pressed & PORT_A_KEY_DOWN)  scroll_y--;
-        if (pressed & PORT_A_KEY_LEFT)  scroll_x--;
-        if (pressed & PORT_A_KEY_RIGHT) scroll_x++;
-        if (pressed & PORT_A_KEY_2)     break;
+        /* Respond instantly when the direction first goes down */
+        if (SMS_getKeysPressed () & (PORT_A_KEY_UP | PORT_A_KEY_DOWN | PORT_A_KEY_LEFT | PORT_A_KEY_RIGHT))
+        {
+            move = true;
+        }
+
+        /* Rate-limited repeat if the button is held down */
+        if (repeat >= REPEAT_RATE)
+        {
+            move = true;
+        }
+
+        /* Fast move if button 1 is held down */
+        if (pressed & PORT_A_KEY_1)
+        {
+            move = true;
+        }
+
+        if (move)
+        {
+            repeat = 0;
+            if (pressed & PORT_A_KEY_UP)    scroll_y++;
+            if (pressed & PORT_A_KEY_DOWN)  scroll_y--;
+            if (pressed & PORT_A_KEY_LEFT)  scroll_x--;
+            if (pressed & PORT_A_KEY_RIGHT) scroll_x++;
+        }
+
+        repeat++;
     }
 
     SMS_setBGScrollX (0);
