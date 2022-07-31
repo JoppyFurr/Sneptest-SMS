@@ -1,5 +1,14 @@
 
+#define REPEAT_RATE 20
+
 void clear_screen (void);
 void draw_string (int x, int y, char *string);
-void title_draw (char *title);
 void reference_draw (char *text);
+void title_draw (char *title);
+void uint8_to_string (char *string, uint8_t value);
+
+/* Menu API */
+void menu_new (char *title);
+void menu_item_add (char *name, void (*func) (void));
+void menu_item_add_value (char *name, uint16_t max, void (*func) (uint16_t));
+void menu_run (void (*menu_func) (void));

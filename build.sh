@@ -18,6 +18,7 @@ build_sneptest ()
     echo "Compiling..."
     eval $CC $CFLAGS -c source/main.c -o work/main.rel || exit 1
     eval $CC $CFLAGS -c source/input_tests.c -o work/input_tests.rel || exit 1
+    eval $CC $CFLAGS -c source/vdp_tests.c -o work/vdp_tests.rel || exit 1
 
     echo "Linking..."
     eval $CC -o work/sneptest.ihx -mz80 --no-std-crt0 --data-loc 0xC000 ${devkitSMS}/crt0/crt0_sms.rel work/*.rel ${SMSlib}/SMSlib.lib || exit 1
