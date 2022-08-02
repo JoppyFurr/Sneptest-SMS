@@ -7,6 +7,8 @@
 #include "SMSlib.h"
 #include "sneptest.h"
 
+static uint8_t line_interrupt_count = 0;
+
 /*
  * Test for VDP scrolling behaviour.
  */
@@ -77,9 +79,10 @@ void vdp_scroll_test (void)
 }
 
 
-uint8_t line_interrupt_count = 0;
-
-void vdp_interrupt_test_handler (void)
+/*
+ * Increment the line interrupt counter.
+ */
+static void vdp_interrupt_test_handler (void)
 {
     line_interrupt_count++;
 }
@@ -211,13 +214,13 @@ void vdp_sprite_test (void)
 }
 
 
-void vdp_background_backdrop_set (uint16_t value)
+static void vdp_background_backdrop_set (uint16_t value)
 {
     SMS_setBackdropColor (value);
 }
 
 
-void vdp_background_blank_set (uint16_t value)
+static void vdp_background_blank_set (uint16_t value)
 {
     if (value)
     {

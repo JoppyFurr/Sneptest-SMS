@@ -11,7 +11,7 @@
 /*
  * Test for 2-button SMS gamepad behaviour.
  */
-void input_test_2_button (void)
+static void input_test_2_button (void)
 {
     char string_buf[3] = { '\0' };
     unsigned int scroll_x = 0;
@@ -67,7 +67,7 @@ void input_test_2_button (void)
 /*
  * Test the pause and reset buttons.
  */
-void input_test_pause_reset (void)
+static void input_test_pause_reset (void)
 {
     uint8_t pressed = 0;
     char string_buf[20] = { '\0' };
@@ -103,7 +103,7 @@ void input_test_pause_reset (void)
 /*
  * Input test submenu
  */
-void input_menu (void)
+static void input_menu (void)
 {
     menu_new ("INPUT TESTS");
     menu_item_add ("SMS 2-BUTTON GAMEPAD", input_test_2_button);
