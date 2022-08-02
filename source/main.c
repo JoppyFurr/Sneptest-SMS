@@ -438,7 +438,7 @@ void uint8_to_string (char *string, uint8_t value)
 void main_menu (void)
 {
     menu_new ("SNEPTEST SMS");
-    menu_item_add ("INPUT", input_test);
+    menu_item_add ("INPUT TESTS", input_menu_run);
     menu_item_add ("VDP BACKGROUND", vdp_background_test);
     menu_item_add ("VDP LINE INTERRUPTS", vdp_line_interrupt_test);
     menu_item_add ("VDP SCROLLING", vdp_scroll_test);
