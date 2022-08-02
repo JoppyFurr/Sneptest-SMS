@@ -413,26 +413,6 @@ void draw_string_priority (int x, int y, char *string)
 
 
 /*
- * TODO: Remove when remaining code is converted to new menu framework.
- */
-void uint8_to_string (char *string, uint8_t value)
-{
-    /* Most-significant nibble */
-    if (value < 0xa0)
-        string[0] = '0' + (value >> 4);
-    else
-        string[0] = 'A' + (value >> 4) - 10;
-
-    /* Least-significant nibble */
-    if ((value & 0x0f) < 0x0a)
-        string[1] = '0' + (value & 0x0f);
-    else
-        string[1] = 'A' + (value & 0x0f) - 10;
-}
-
-
-
-/*
  * Main menu, shown to the user at startup.
  */
 void main_menu (void)

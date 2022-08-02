@@ -5,7 +5,6 @@ void clear_screen (void);
 void draw_string (int x, int y, char *string);
 void reference_draw (char *text);
 void title_draw (char *title);
-void uint8_to_string (char *string, uint8_t value);
 
 /* Menu API */
 void menu_new (char *title);

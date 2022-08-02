@@ -2,8 +2,9 @@
  * Sneptest SMS - VDP Tests
  */
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #include "SMSlib.h"
 #include "sneptest.h"
 
@@ -12,13 +13,13 @@ static uint8_t line_interrupt_count = 0;
 /*
  * Test for VDP scrolling behaviour.
  */
-void vdp_scroll_test (void)
+static void vdp_scroll_test (void)
 {
-    char string_buf[3] = { '\0' };
     uint16_t pressed = 0;
-    uint16_t scroll_x = 0;
-    uint16_t scroll_y = 0;
+    uint8_t scroll_x = 0;
+    uint8_t scroll_y = 0;
     uint8_t repeat = 0;
+    char string_buf[3] = { '\0' };
 
     clear_screen ();
     title_draw ("VDP SCROLLING");
@@ -36,9 +37,9 @@ void vdp_scroll_test (void)
         SMS_setBGScrollY (scroll_y);
 
         /* Render during vblank */
-        uint8_to_string (string_buf, scroll_x);
+        sprintf (string_buf, "%02X", scroll_x);
         draw_string (20, 12, string_buf);
-        uint8_to_string (string_buf, scroll_y);
+        sprintf (string_buf, "%02X", scroll_y);
         draw_string (20, 14, string_buf);
 
         /* Input handling */
@@ -95,8 +96,8 @@ static void vdp_interrupt_test_handler (void)
 static void vdp_line_interrupt_test (void)
 {
     char string_buf[3] = { '\0' };
-    unsigned int counter_reload = 128;
-    unsigned int count_last_frame = 0;
+    uint8_t counter_reload = 128;
+    uint16_t count_last_frame = 0;
 
     /* Configure the interrupt */
     SMS_setLineInterruptHandler (vdp_interrupt_test_handler);
@@ -121,9 +122,9 @@ static void vdp_line_interrupt_test (void)
         line_interrupt_count = 0;
 
         /* Render during vblank */
-        uint8_to_string (string_buf, counter_reload);
+        sprintf (string_buf, "%02X", counter_reload);
         draw_string (22, 10, string_buf);
-        uint8_to_string (string_buf, count_last_frame);
+        sprintf (string_buf, "%02X", count_last_frame);
         draw_string (22, 13, string_buf);
 
         /* Input handling */
@@ -154,8 +155,8 @@ static void vdp_line_interrupt_test (void)
 static void vdp_sprite_test (void)
 {
     char string_buf[3] = { '\0' };
-    unsigned int sprite_x = 128;
-    unsigned int sprite_y = 96;
+    uint8_t sprite_x = 128;
+    uint8_t sprite_y = 96;
     signed char sprite_index = 0;
 
     clear_screen ();
@@ -177,9 +178,9 @@ static void vdp_sprite_test (void)
         SMS_waitForVBlank ();
 
         /* Render during vblank */
-        uint8_to_string (string_buf, sprite_x);
+        sprintf (string_buf, "%02X", sprite_x);
         draw_string (22, 12, string_buf);
-        uint8_to_string (string_buf, sprite_y);
+        sprintf (string_buf, "%02X", sprite_y);
         draw_string (22, 14, string_buf);
         SMS_updateSpritePosition (sprite_index, sprite_x, sprite_y);
         SMS_copySpritestoSAT ();
