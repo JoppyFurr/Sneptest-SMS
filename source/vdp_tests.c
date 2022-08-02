@@ -92,7 +92,7 @@ static void vdp_interrupt_test_handler (void)
  * Test for VDP line-interrupt behaviour.
  * TODO: Option to change background in interrupt handler.
  */
-void vdp_line_interrupt_test (void)
+static void vdp_line_interrupt_test (void)
 {
     char string_buf[3] = { '\0' };
     unsigned int counter_reload = 128;
@@ -151,7 +151,7 @@ void vdp_line_interrupt_test (void)
 /*
  * Test for sprite behaviour.
  */
-void vdp_sprite_test (void)
+static void vdp_sprite_test (void)
 {
     char string_buf[3] = { '\0' };
     unsigned int sprite_x = 128;
@@ -236,7 +236,7 @@ static void vdp_background_blank_set (uint16_t value)
 /*
  * Test for the background and backtrop behaviour.
  */
-void vdp_background_menu (void)
+static void vdp_background_menu (void)
 {
     menu_new ("VDP BACKGROUND");
     menu_item_add_value ("BACKDROP", 0x0f, vdp_background_backdrop_set);
@@ -244,10 +244,26 @@ void vdp_background_menu (void)
 
     /* TODO: draw_string_priority (10, y,  "PRIORITY STRING"); */
 }
-void vdp_background_test (void)
+static void vdp_background_test (void)
 {
     menu_run (vdp_background_menu);
     SMS_setBackdropColor (0);
     SMS_displayOn ();
 }
 
+
+/*
+ * VDP test submenu
+ */
+static void vdp_menu (void)
+{
+    menu_new ("VDP TESTS");
+    menu_item_add ("VDP BACKGROUND", vdp_background_test);
+    menu_item_add ("VDP LINE INTERRUPTS", vdp_line_interrupt_test);
+    menu_item_add ("VDP SCROLLING", vdp_scroll_test);
+    menu_item_add ("VDP SPRITES", vdp_sprite_test);
+}
+void vdp_menu_run (void)
+{
+    menu_run (vdp_menu);
+}
