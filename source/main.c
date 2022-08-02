@@ -17,6 +17,8 @@
 #include "input_tests.h"
 #include "vdp_tests.h"
 
+SMS_EMBED_SEGA_ROM_HEADER (9999, 0);
+
 const uint8_t patterns[] = {
 
     /* Public-domain 8x8 font from https://github.com/dhepper/font8x8 */
