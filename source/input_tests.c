@@ -69,10 +69,9 @@ static void input_test_2_button (void)
  */
 static void input_test_pause_reset (void)
 {
-    uint8_t pressed = 0;
-    char string_buf[20] = { '\0' };
-
+    uint16_t pressed = 0;
     uint8_t pause_counter = 0;
+    char string_buf[20] = { '\0' };
 
     clear_screen ();
     title_draw ("PAUSE & RESET");
