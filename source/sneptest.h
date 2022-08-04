@@ -9,5 +9,6 @@ void title_draw (char *title);
 /* Menu API */
 void menu_new (char *title);
 void menu_item_add (char *name, void (*func) (void));
-void menu_item_add_value (char *name, uint16_t max, void (*func) (uint16_t));
+void menu_item_add_value (char *name, uint16_t start, uint16_t max, void (*func) (uint16_t));
+void menu_item_add_show_uint (char *name, uint16_t (*func) (void));
 void menu_run (void (*menu_func) (void));

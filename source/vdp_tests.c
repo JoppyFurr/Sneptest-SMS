@@ -8,7 +8,7 @@
 #include "SMSlib.h"
 #include "sneptest.h"
 
-static uint8_t line_interrupt_count = 0;
+static uint16_t line_interrupt_count = 0;
 
 /*
  * Test for VDP scrolling behaviour.
@@ -81,75 +81,6 @@ static void vdp_scroll_test (void)
 
 
 /*
- * Increment the line interrupt counter.
- */
-static void vdp_interrupt_test_handler (void)
-{
-    line_interrupt_count++;
-}
-
-
-/*
- * Test for VDP line-interrupt behaviour.
- * TODO: Option to change background in interrupt handler.
- */
-static void vdp_line_interrupt_test (void)
-{
-    char string_buf[3] = { '\0' };
-    uint8_t counter_reload = 128;
-    uint16_t count_last_frame = 0;
-
-    /* Configure the interrupt */
-    SMS_setLineInterruptHandler (vdp_interrupt_test_handler);
-    SMS_enableLineInterrupt();
-
-    clear_screen ();
-    title_draw ("VDP LINE INTERRUPTS");
-    reference_draw ("      1: SLOW       2: BACK     ");
-
-    draw_string (6, 10,  "COUNTER RELOAD:");
-
-    draw_string (6, 12,  "INTERRUPTS");
-    draw_string (6, 13,  "THIS FRAME:");
-
-    while (true)
-    {
-        unsigned int pressed;
-        SMS_waitForVBlank ();
-
-        /* Update and reset counter */
-        count_last_frame = line_interrupt_count;
-        line_interrupt_count = 0;
-
-        /* Render during vblank */
-        sprintf (string_buf, "%02X", counter_reload);
-        draw_string (22, 10, string_buf);
-        sprintf (string_buf, "%02X", count_last_frame);
-        draw_string (22, 13, string_buf);
-
-        /* Input handling */
-        pressed = SMS_getKeysStatus ();
-        if (pressed & PORT_A_KEY_1)
-            pressed = SMS_getKeysPressed ();
-
-        if (pressed & PORT_A_KEY_UP)
-        {
-            counter_reload++;
-            SMS_setLineCounter (counter_reload);
-        }
-        if (pressed & PORT_A_KEY_DOWN)
-        {
-            counter_reload--;
-            SMS_setLineCounter (counter_reload);
-        }
-        if (pressed & PORT_A_KEY_2)     break;
-    }
-
-    SMS_disableLineInterrupt();
-}
-
-
-/*
  * Test for sprite behaviour.
  */
 static void vdp_sprite_test (void)
@@ -215,6 +146,53 @@ static void vdp_sprite_test (void)
 }
 
 
+
+
+/*
+ * Increment the line interrupt counter.
+ */
+static void vdp_interrupt_test_handler (void)
+{
+    line_interrupt_count++;
+}
+
+
+static uint16_t vdp_line_interrupt_count_get (void)
+{
+    uint16_t ret = line_interrupt_count;
+    line_interrupt_count = 0;
+    return ret;
+}
+
+
+static void vdp_line_interrupt_reload_set (uint16_t value)
+{
+    SMS_setLineCounter (value);
+}
+
+
+/*
+ * Test the line interrupt behaviour.
+ */
+static void vdp_line_interrupt_menu (void)
+{
+    menu_new ("VDP LINE INTERRUPT");
+    menu_item_add_value ("COUNTER RELOAD", 0x80, 0xff, vdp_line_interrupt_reload_set);
+    menu_item_add_show_uint ("INTERRUPTS PER FRAME", vdp_line_interrupt_count_get);
+}
+static void vdp_line_interrupt_test (void)
+{
+    SMS_setLineInterruptHandler (vdp_interrupt_test_handler);
+    SMS_setLineCounter (0x80);
+    SMS_enableLineInterrupt();
+
+    menu_run (vdp_line_interrupt_menu);
+
+    SMS_disableLineInterrupt();
+    SMS_setBackdropColor (0);
+}
+
+
 static void vdp_background_backdrop_set (uint16_t value)
 {
     SMS_setBackdropColor (value);
@@ -235,13 +213,13 @@ static void vdp_background_blank_set (uint16_t value)
 
 
 /*
- * Test for the background and backtrop behaviour.
+ * Test for the background and backdrop behaviour.
  */
 static void vdp_background_menu (void)
 {
     menu_new ("VDP BACKGROUND");
-    menu_item_add_value ("BACKDROP", 0x0f, vdp_background_backdrop_set);
-    menu_item_add_value ("BLANKING", 0x01, vdp_background_blank_set);
+    menu_item_add_value ("BACKDROP", 0x00, 0x0f, vdp_background_backdrop_set);
+    menu_item_add_value ("BLANKING", 0x00, 0x01, vdp_background_blank_set);
 
     /* TODO: draw_string_priority (10, y,  "PRIORITY STRING"); */
 }

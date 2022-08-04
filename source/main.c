@@ -130,14 +130,16 @@ void clear_screen (void)
 
 
 /* Menu state */
-
 typedef struct menu_item_s {
     uint8_t type;
     char *name;
-    void (*func) (void);
     uint16_t value;
     uint16_t value_max;
-    void (*value_func) (uint16_t);
+    union {
+        void (*func) (void);
+        void (*value_func) (uint16_t);
+        uint16_t (*show_func) (void);
+    };
 } menu_item;
 
 #define MENU_LEN_MAX 8
@@ -159,6 +161,7 @@ void menu_new (char *title)
 
 #define MENU_ITEM_FUNCTION  0
 #define MENU_ITEM_VALUE     1
+#define MENU_ITEM_SHOW_UINT 2
 
 /*
  * Add a selectable menu item.
@@ -172,13 +175,22 @@ void menu_item_add (char *name, void (*func) (void))
 }
 
 
-void menu_item_add_value (char *name, uint16_t max, void (*func) (uint16_t))
+void menu_item_add_value (char *name, uint16_t start, uint16_t max, void (*func) (uint16_t))
 {
     menu [menu_len].type = MENU_ITEM_VALUE;
     menu [menu_len].name = name;
-    menu [menu_len].value = 0;
+    menu [menu_len].value = start;
     menu [menu_len].value_max = max;
     menu [menu_len].value_func = func;
+    menu_len++;
+}
+
+
+void menu_item_add_show_uint (char *name, uint16_t (*func) (void))
+{
+    menu [menu_len].type = MENU_ITEM_SHOW_UINT;
+    menu [menu_len].name = name;
+    menu [menu_len].show_func = func;
     menu_len++;
 }
 
@@ -188,9 +200,10 @@ void menu_item_add_value (char *name, uint16_t max, void (*func) (uint16_t))
  */
 void menu_update (void)
 {
-    uint8_t str_buf [32] = "";
+    uint8_t len;
+    uint8_t str_buf [32];
 
-    /* Re-draw the cursor */
+    /* Redraw the cursor */
     for (uint8_t i = 0; i < menu_len; i++)
     {
         draw_string (1, 4 + (2 * i), (i == menu_cursor) ? "->" : "  ");
@@ -199,8 +212,21 @@ void menu_update (void)
     /* If the cursor is on a value chooser, redraw the number */
     if (menu [menu_cursor].type == MENU_ITEM_VALUE)
     {
-        sprintf (str_buf, "%s: %02X", menu [menu_cursor].name, menu [menu_cursor].value);
-        draw_string (4, 4 + (2 * menu_cursor), str_buf);
+        len = strlen (menu [menu_cursor].name);
+        sprintf (str_buf, "%02X", menu [menu_cursor].value);
+        draw_string (4 + len + 2, 4 + (2 * menu_cursor), str_buf);
+    }
+
+    /* Redraw any shown values */
+    for (uint8_t i = 0; i < menu_len; i++)
+    {
+        if (menu [i].type == MENU_ITEM_SHOW_UINT)
+        {
+            /* Trailing spaces to clear previous value */
+            sprintf (str_buf, "%d  ", menu [i].show_func ());
+            len = strlen (menu [i].name);
+            draw_string (4 + len + 2, 4 + 2 * i, str_buf);
+        }
     }
 }
 
@@ -275,6 +301,11 @@ void menu_draw (void)
             sprintf (str_buf, "%s: %02X", menu [i].name, menu [i].value);
             draw_string (4, 4 + (2 * i), str_buf);
         }
+        else if (menu [i].type == MENU_ITEM_SHOW_UINT)
+        {
+            sprintf (str_buf, "%s:", menu [i].name);
+            draw_string (4, 4 + (2 * i), str_buf);
+        }
     }
 
     reference_draw ("      1: SELECT     2: BACK     ");
@@ -293,7 +324,6 @@ void menu_run (void (*menu_func) (void))
     uint8_t cursor_store;
 
     menu_func ();
-    SMS_waitForVBlank ();
     menu_draw ();
 
     while (true)
@@ -436,6 +466,7 @@ void main (void)
 
     SMS_load1bppTiles (patterns, 0, sizeof (patterns), 0, 1);
 
+    SMS_waitForVBlank ();
     SMS_displayOn ();
 
     while (true)
