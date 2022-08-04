@@ -119,10 +119,27 @@ void draw_string (int x, int y, char *string)
 }
 
 
-void clear_screen (void)
+/*
+ * Fully clear the name table.
+ */
+void clear_name_table (void)
 {
     uint16_t name_table[32] = { 0 };
     for (int i = 0; i < 28; i++)
+    {
+        SMS_loadTileMapArea (0, i, name_table, 32, 1);
+    }
+}
+
+
+/*
+ * Clear the active area of the menu.
+ * (area above the help-text rule)
+ */
+void clear_screen (void)
+{
+    uint16_t name_table[32] = { 0 };
+    for (int i = 0; i < 22; i++)
     {
         SMS_loadTileMapArea (0, i, name_table, 32, 1);
     }
@@ -198,15 +215,28 @@ void menu_item_add_show_uint (char *name, uint16_t (*func) (void))
 /*
  * Update the VDP with the current menu state.
  */
-void menu_update (void)
+void menu_update (bool cursor_change)
 {
     uint8_t len;
     uint8_t str_buf [32];
 
-    /* Redraw the cursor */
-    for (uint8_t i = 0; i < menu_len; i++)
+    if (cursor_change)
     {
-        draw_string (1, 4 + (2 * i), (i == menu_cursor) ? "->" : "  ");
+        /* Redraw the cursor */
+        for (uint8_t i = 0; i < menu_len; i++)
+        {
+            draw_string (1, 4 + (2 * i), (i == menu_cursor) ? "->" : "  ");
+        }
+
+        /* Update the reference text */
+        if (menu [menu_cursor].type == MENU_ITEM_VALUE)
+        {
+            reference_draw ("   1: FAST-SCROLL     2: BACK   ");
+        }
+        else
+        {
+            reference_draw ("     1: SELECT      2: BACK     ");
+        }
     }
 
     /* If the cursor is on a value chooser, redraw the number */
@@ -308,8 +338,7 @@ void menu_draw (void)
         }
     }
 
-    reference_draw ("      1: SELECT     2: BACK     ");
-    menu_update ();
+    menu_update (true);
 }
 
 
@@ -328,6 +357,8 @@ void menu_run (void (*menu_func) (void))
 
     while (true)
     {
+        bool cursor_change = false;
+
         SMS_waitForVBlank ();
         keys_pressed = SMS_getKeysPressed ();
         keys_status = SMS_getKeysStatus ();
@@ -340,6 +371,10 @@ void menu_run (void (*menu_func) (void))
             {
                 menu_cursor = 0;
             }
+            else
+            {
+                cursor_change = true;
+            }
         }
         else if (keys_pressed & PORT_A_KEY_DOWN)
         {
@@ -347,6 +382,9 @@ void menu_run (void (*menu_func) (void))
             if (menu_cursor >= menu_len)
             {
                 menu_cursor = menu_len - 1;
+            }
+            {
+                cursor_change = true;
             }
         }
         else if (keys_pressed & PORT_A_KEY_2)
@@ -370,7 +408,7 @@ void menu_run (void (*menu_func) (void))
         /* Value items */
         else if (menu [menu_cursor].type == MENU_ITEM_VALUE)
         {
-            bool change = false;
+            bool value_change = false;
 
             /* Change the value if one of the following are true:
              * - Left/Right were just pressed
@@ -381,12 +419,12 @@ void menu_run (void (*menu_func) (void))
                 (repeat >= REPEAT_RATE) ||
                 (keys_status & PORT_A_KEY_1))
             {
-                change = true;
+                value_change = true;
                 repeat = 0;
             }
             repeat++;
 
-            if (change)
+            if (value_change)
             {
                 if (keys_status & PORT_A_KEY_LEFT)
                 {
@@ -415,7 +453,7 @@ void menu_run (void (*menu_func) (void))
             }
         }
 
-        menu_update ();
+        menu_update (cursor_change);
     }
 }
 
@@ -465,6 +503,7 @@ void main (void)
     SMS_setBGPaletteColor (1, 0x3f);        /* Background 1: White (text) */
 
     SMS_load1bppTiles (patterns, 0, sizeof (patterns), 0, 1);
+    clear_name_table ();
 
     SMS_waitForVBlank ();
     SMS_displayOn ();
