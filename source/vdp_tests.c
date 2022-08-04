@@ -173,6 +173,13 @@ static void vdp_line_interrupt_reload_set (uint16_t value)
 
 /*
  * Test the line interrupt behaviour.
+ *
+ * Note: Responding to user input can keep us busy enough
+ *       to miss a vblank. This can cause two frames worth
+ *       of interrupts to be shown while actively scrolling.
+ *
+ *       To get a more reliable value, perhaps we need a
+ *       custom frame interrupt handler...
  */
 static void vdp_line_interrupt_menu (void)
 {
